@@ -60,7 +60,7 @@ impl Map {
         /* whether value lies inside this rule */ bool
     )> {
         return self.sources.iter().enumerate()
-            .map(|(index, source)| (index, (source + self.lengths[index]) as i32 - (value as i32)))
+            .map(|(index, source)| (index, (source + self.lengths[index]) as i64 - (value as i64)))
             .filter(|(_, v)| *v > 0)
             .min_by_key(|(_, v)| *v)
             .map(|(index, _)| (index, value >= self.sources[index]));
@@ -132,20 +132,10 @@ impl Almanac {
         return self.maps.iter().fold(value, |acc, map| map.convert(acc));
     }
     pub(crate) fn convert_range(&self, range: Range) -> Vec<Range> {
-        return self.maps.iter().enumerate().fold(
+        return self.maps.iter().fold(
             vec![range],
-            |ranges, (index, map)| {
-                let pre_merge: Vec<Range> = ranges.iter().flat_map(|range| map.convert_range(*range)).collect();
-                let pre_merge_len = pre_merge.len();
-                let post_merge: Vec<Range> = Range::merge(pre_merge);
-                println!("Map at layer {} has {} rules. Starts from {} input ranges to {} (was {} before merging them)",
-                    index,
-                    map.sources.len(),
-                    ranges.len(),
-                    post_merge.len(),
-                    pre_merge_len,
-                );
-                return post_merge
+            |ranges, map| {
+                return Range::merge(ranges.iter().flat_map(|range| map.convert_range(*range)).collect());
             }
         );
     }
@@ -192,8 +182,15 @@ pub fn part1(almanac: &Almanac) -> u32 {
     return almanac.seeds.iter().map(|seed| almanac.convert(*seed)).min().unwrap();
 }
 
-#[aoc(day5, part2)]
-pub fn part2(almanac: &Almanac) -> u32 {
+#[aoc(day5, part2, ranges)]
+pub fn part2_sets(almanac: &Almanac) -> u32 {
+    let start_ranges: Vec<Range> = almanac.seeds.chunks(2).map(|range| Range { from: range[0], to: range[0] + range[1] }).collect();
+    let end_ranges: Vec<Range> = start_ranges.iter().flat_map(|range| almanac.convert_range(*range)).collect();
+    return end_ranges.iter().map(|range| range.from).min().unwrap();
+}
+
+#[aoc(day5, part2, naive)]
+pub fn part2_naive(almanac: &Almanac) -> u32 {
     let mut seed_index = 0;
     let mut min = u32::MAX;
     while seed_index < almanac.seeds.len() {
@@ -207,16 +204,9 @@ pub fn part2(almanac: &Almanac) -> u32 {
     return min;
 }
 
-#[aoc(day5, part2, sets)]
-pub fn part2_sets(almanac: &Almanac) -> u32 {
-    let start_ranges: Vec<Range> = almanac.seeds.chunks(2).map(|range| Range { from: range[0], to: range[0] + range[1] }).collect();
-    let end_ranges: Vec<Range> = start_ranges.iter().flat_map(|range| almanac.convert_range(*range)).collect();
-    return end_ranges.iter().map(|range| range.from).min().unwrap();
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{Almanac, input_generator, part1, part2, part2_sets, Range};
+    use super::{Almanac, input_generator, part1, part2_sets, part2_naive, Range};
 
     fn get_example_almanac() -> Almanac {
         let example = "seeds: 79 14 55 13
@@ -263,15 +253,15 @@ humidity-to-location map:
 
     // part 2
     #[test]
-    fn sample2() {
-        assert_eq!(part2(&get_example_almanac()), 46);
-    }
-
-    #[test]
     fn sample2_sets() {
         assert_eq!(part2_sets(&get_example_almanac()), 46);
     }
+    #[test]
+    fn sample2_naive() {
+        assert_eq!(part2_naive(&get_example_almanac()), 46);
+    }
 
+    // some tests for the helpers
     #[test]
     fn sample3a() {
         let almanac = &get_example_almanac();
