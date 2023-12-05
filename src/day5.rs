@@ -22,7 +22,7 @@ impl Range {
             // if the range ends before the next range starts, add it
             } else {
                 let mut to = range.to;
-                while to > ranges[range_index + 1].from {
+                while to >= ranges[range_index + 1].from {
                     to = cmp::max(to, ranges[range_index + 1].to);
                     range_index += 1;
                     if range_index > initial_range_count - 2 {
@@ -132,9 +132,21 @@ impl Almanac {
         return self.maps.iter().fold(value, |acc, map| map.convert(acc));
     }
     pub(crate) fn convert_range(&self, range: Range) -> Vec<Range> {
-        return self.maps.iter().fold(
+        return self.maps.iter().enumerate().fold(
             vec![range],
-            |ranges, map| Range::merge(ranges.iter().flat_map(|range|map.convert_range(*range)).collect())
+            |ranges, (index, map)| {
+                let pre_merge: Vec<Range> = ranges.iter().flat_map(|range| map.convert_range(*range)).collect();
+                let pre_merge_len = pre_merge.len();
+                let post_merge: Vec<Range> = Range::merge(pre_merge);
+                println!("Map at layer {} has {} rules. Starts from {} input ranges to {} (was {} before merging them)",
+                    index,
+                    map.sources.len(),
+                    ranges.len(),
+                    post_merge.len(),
+                    pre_merge_len,
+                );
+                return post_merge
+            }
         );
     }
 }
