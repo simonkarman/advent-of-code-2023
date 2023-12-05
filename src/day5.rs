@@ -1,3 +1,5 @@
+use std::cmp;
+
 #[derive(Debug)]
 pub struct Map {
     destinations: Vec<u32>,
@@ -20,7 +22,7 @@ impl Map {
 
 #[derive(Debug)]
 pub struct Almanac {
-    seeds: Vec<u32>,
+    pub(crate) seeds: Vec<u32>,
     maps: Vec<Map>,
 }
 
@@ -72,8 +74,18 @@ pub fn part1(almanac: &Almanac) -> u32 {
 }
 
 #[aoc(day5, part2)]
-pub fn part2(_almanac: &Almanac) -> u32 {
-    return 0;
+pub fn part2(almanac: &Almanac) -> u32 {
+    let mut seed_index = 0;
+    let mut min = u32::MAX;
+    while seed_index < almanac.seeds.len() {
+        let from = almanac.seeds[seed_index];
+        let to = from + almanac.seeds[seed_index + 1];
+        for seed_value in from..to {
+            min = cmp::min(almanac.convert(seed_value), min);
+        }
+        seed_index += 2;
+    }
+    return min;
 }
 
 #[cfg(test)]
@@ -122,7 +134,40 @@ humidity-to-location map:
     // part 2
     #[test]
     fn sample2() {
-        assert_eq!(part2(&input_generator("")), 0);
+        let example = "seeds: 79 14 55 13
+
+seed-to-soil map:
+50 98 2
+52 50 48
+
+soil-to-fertilizer map:
+0 15 37
+37 52 2
+39 0 15
+
+fertilizer-to-water map:
+49 53 8
+0 11 42
+42 0 7
+57 7 4
+
+water-to-light map:
+88 18 7
+18 25 70
+
+light-to-temperature map:
+45 77 23
+81 45 19
+68 64 13
+
+temperature-to-humidity map:
+0 69 1
+1 0 69
+
+humidity-to-location map:
+60 56 37
+56 93 4";
+        assert_eq!(part2(&input_generator(example)), 46);
     }
 
 }
