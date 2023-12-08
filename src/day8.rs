@@ -47,9 +47,48 @@ pub fn part1(map: &Map) -> i32 {
     return steps as i32;
 }
 
+// returns the least common multiple of n numbers
+pub fn lcm(nums: &[u64]) -> u64 {
+    if nums.len() == 1 {
+        return nums[0];
+    }
+    let a = nums[0];
+    let b = lcm(&nums[1..]);
+    a * b / gcd_of_two_numbers(a, b)
+}
+fn gcd_of_two_numbers(a: u64, b: u64) -> u64 {
+    if b == 0 {
+        return a;
+    }
+    gcd_of_two_numbers(b, a % b)
+}
+
 #[aoc(day8, part2)]
-pub fn part2(_input: &Map) -> i32 {
-    return 0;
+pub fn part2(map: &Map) -> u64 {
+    let map = map.to_owned();
+    let mut all: Vec<String> = vec![];
+    for name in map.nodes.keys() {
+        if name.ends_with('A') {
+            all.push(name.clone());
+        }
+    }
+
+    let steps: Vec<u64> = all.iter().map(|start| {
+        let mut current = start.to_string();
+        let mut steps: usize = 0;
+        while !current.ends_with('Z') {
+            let direction = map.instructions.chars().nth(steps % map.instructions.chars().count()).unwrap();
+            steps += 1;
+            let curr_node = map.nodes.get(current.as_str()).unwrap();
+            if direction == 'L' {
+                current = curr_node.left.to_string();
+            } else {
+                current = curr_node.right.to_string();
+            }
+        }
+        return steps as u64;
+    }).collect();
+    return lcm(&steps);
 }
 
 #[cfg(test)]
@@ -69,7 +108,8 @@ mod tests {
     // part 2
     #[test]
     fn sample2() {
-        assert_eq!(part2(&example()), 0);
+        let input = "LR\n\n11A = (11B, XXX)\n11B = (XXX, 11Z)\n11Z = (11B, XXX)\n22A = (22B, XXX)\n22B = (22C, 22C)\n22C = (22Z, 22Z)\n22Z = (22B, 22B)\nXXX = (XXX, XXX)";
+        assert_eq!(part2(&input_generator(input)), 6);
     }
 
 }
