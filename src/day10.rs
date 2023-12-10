@@ -127,21 +127,6 @@ pub fn solution(input: &str) -> (i32, i32) {
         y = next_y;
         direction = next_direction;
     }
-    let print_map = |data: *const Vec<bool>| unsafe {
-        data.as_ref().unwrap().chunks(width).for_each(|chunk| {
-            chunk.iter().for_each(|val| {
-                if *val {
-                    print!("X");
-                } else {
-                    print!(".");
-                }
-            });
-            print!("\n");
-        });
-        print!("\n");
-    };
-    print_map(&is_pipe);
-    print_map(&is_inside);
 
     // Flood fill the inside
     let mut is_visited = vec![false; width * height];
@@ -166,7 +151,6 @@ pub fn solution(input: &str) -> (i32, i32) {
         try_visit(x + 1, y);
         try_visit(x - 1, y);
     }
-    print_map(&is_visited);
     return ((distance + 1) / 2, visit_count);
 }
 
