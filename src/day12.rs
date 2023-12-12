@@ -57,9 +57,14 @@ fn find_arrangements(row: &str, group_sizes: &Vec<usize>) -> usize {
             if continue_from >= row.len() {
                 return 0;
             }
+            let remaining = row.len() - continue_from;
+            let remaining_groups: Vec<usize> = group_sizes.iter().map(|v| *v).skip(1).collect();
+            if remaining < (remaining_groups.len() - 1) + remaining_groups.iter().sum::<usize>() {
+                return 0;
+            }
             return find_arrangements(
                 &row[continue_from..],
-                &group_sizes.iter().map(|v| *v).skip(1).collect(),
+                &remaining_groups,
             )
         })
         .sum();
@@ -73,8 +78,27 @@ pub fn part1(input: &str) -> usize {
     )).sum();
 }
 #[aoc(day12, part2)]
-pub fn part2(_input: &str) -> usize {
-    return 0;
+pub fn part2(input: &str) -> usize {
+    let mut length = input.lines().count();
+    return input.lines().map(|line| {
+        println!("{} left", length);
+        length -= 1;
+        let row_short = line.split(' ').next().unwrap();
+        let mut row = String::from(row_short);
+        let mut group_sizes: Vec<usize> = line.split(' ').skip(1).next().unwrap().split(',').map(|v| v.parse().unwrap()).collect();
+        let num_of_groups = group_sizes.len();
+        for _ in 0..4 {
+            row.push('?');
+            row.push_str(row_short);
+            for j in 0..num_of_groups {
+                group_sizes.push(group_sizes[j]);
+            }
+        }
+        find_arrangements(
+            row.as_str(),
+            &group_sizes,
+        )
+    }).sum();
 }
 
 #[cfg(test)]
@@ -118,7 +142,7 @@ mod tests {
 ????.######..#####. 1,6,5
 ?###???????? 3,2,1";
         assert_eq!(part1(example), 21);
-        assert_eq!(part2(example), 0);
+        assert_eq!(part2(example), 525152);
     }
 
 }
