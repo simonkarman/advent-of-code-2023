@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::time::SystemTime;
 
 fn can_place_at(row: &[char], index: usize, size: usize, exhaustive: bool) -> bool {
     // length must be sufficient
@@ -30,12 +29,10 @@ fn can_place_at(row: &[char], index: usize, size: usize, exhaustive: bool) -> bo
     return true;
 }
 
-fn find_placements(cache: &mut HashMap<String, bool>, row: &[char], size: usize, exhaustive: bool) -> Vec<usize> {
+fn find_placements(row: &[char], size: usize, exhaustive: bool) -> Vec<usize> {
     let mut found = vec![];
     for index in 0..row.len() {
-        let key = format!("{:?}-{}-{}-{}", row, index, size, exhaustive);
-        let can_place = cache.entry(key).or_insert_with(|| can_place_at(row, index, size, exhaustive));
-        if *can_place {
+        if can_place_at(row, index, size, exhaustive) {
             found.push(index);
         }
         // Stop after we have started with a hashtag,
@@ -47,17 +44,20 @@ fn find_placements(cache: &mut HashMap<String, bool>, row: &[char], size: usize,
     return found;
 }
 
-fn find_arrangements(row: &[char], group_sizes: &Vec<usize>) -> usize {
+fn find_arrangements(cache: &mut HashMap<String, usize>, row: &[char], group_sizes: &Vec<usize>) -> usize {
     assert_ne!(group_sizes.len(), 0);
-    let mut cache = HashMap::new();
 
     // If this is the last group placement, then return the number of possible exhaustive placements
     if group_sizes.len() == 1 {
-        return find_placements(&mut cache, row, group_sizes[0], true).len();
+        return find_placements(row, group_sizes[0], true).len();
     }
 
     // Otherwise recursively continue with the remaining row and groups from the different placements
-    return find_placements(&mut cache, row, group_sizes[0], false).iter()
+    let key = format!("{:?}/{}", group_sizes, row.iter().collect::<String>());
+    if cache.contains_key(&key) {
+        return *cache.get(&key).unwrap();
+    }
+    let val = find_placements(row, group_sizes[0], false).iter()
         .map(|placement| {
             let continue_from = *placement + group_sizes[0] + 1;
             if continue_from >= row.len() {
@@ -69,18 +69,23 @@ fn find_arrangements(row: &[char], group_sizes: &Vec<usize>) -> usize {
                 return 0;
             }
             return find_arrangements(
+                cache,
                 &row[continue_from..],
                 &remaining_groups,
             )
         })
         .sum();
+    cache.insert(key, val);
+    val
 }
 
 #[aoc(day12, part1)]
 pub fn part1(input: &str) -> usize {
     return input.lines().map(|line| {
         let row: Vec<char> = line.split(' ').next().unwrap().chars().collect();
+        let mut cache = HashMap::new();
         find_arrangements(
+            &mut cache,
             &row[..],
             &line.split(' ').skip(1).next().unwrap().split(',').map(|v| v.parse().unwrap()).collect()
         )
@@ -88,11 +93,7 @@ pub fn part1(input: &str) -> usize {
 }
 #[aoc(day12, part2)]
 pub fn part2(input: &str) -> usize {
-    let start = SystemTime::now();
-    let mut length = input.lines().count();
     return input.lines().map(|line| {
-        println!("{:?}: {} left", start.elapsed().unwrap().as_secs(), length);
-        length -= 1;
         let row_short = line.split(' ').next().unwrap();
         let mut row = String::from(row_short);
         let mut group_sizes: Vec<usize> = line.split(' ').skip(1).next().unwrap().split(',').map(|v| v.parse().unwrap()).collect();
@@ -105,7 +106,9 @@ pub fn part2(input: &str) -> usize {
             }
         }
         let row: Vec<char> = row.chars().collect();
+        let mut cache = HashMap::new();
         find_arrangements(
+            &mut cache,
             &row[..],
             &group_sizes,
         )
@@ -130,7 +133,7 @@ mod tests {
 
     #[test]
     fn slow() {
-        assert_eq!(part2(".?????????????. 1,2,1,1,1"), 0);
+        assert_eq!(part2(".?????????????. 1,2,1,1,1"), 1221405259893);
     }
 
 }
