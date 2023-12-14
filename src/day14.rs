@@ -122,7 +122,9 @@ fn solution(input: &str, number_of_cycles: usize) -> usize {
             let position = post_cycle_fields.iter().position(|f| f == &field);
             if !position.is_none() {
                 cycle_at = position.unwrap();
-                // break;
+                if number_of_cycles >= 101 {
+                    break;
+                }
             } else {
                 post_cycle_fields.push(field.clone());
             }
@@ -153,9 +155,12 @@ fn solution(input: &str, number_of_cycles: usize) -> usize {
     let all_loads: Vec<usize> = post_cycle_fields.iter().map(|field| calculate_load(field)).collect();
     let load = calculate_load(&post_cycle_fields[final_index]);
     println!("which is {} at index {} from all loads up to the repetition {:?}\nRepetition: {:?}", load, final_index, all_loads, all_loads[cycle_at..].iter().map(|s| *s).collect::<Vec<usize>>());
-    let fully_calculated_load = calculate_load(&field);
-    println!("when still doing all results in {} -> {:?}", fully_calculated_load, post_repetition_loads);
-    assert_eq!(load, fully_calculated_load, "loads should be the same if calculated from repetition or by going through all");
+
+    if number_of_cycles <= 100 {
+        let fully_calculated_load = calculate_load(&field);
+        println!("when still doing all results in {} -> {:?}", fully_calculated_load, post_repetition_loads);
+        assert_eq!(load, fully_calculated_load, "loads should be the same if calculated from repetition or by going through all");
+    }
     return load;
 }
 
@@ -166,7 +171,7 @@ pub fn part1(input: &str) -> usize {
 
 #[aoc(day14, part2)]
 pub fn part2(input: &str) -> usize {
-    return solution(input, 18/*1_000_000_000*/);
+    return solution(input, 1_000_000_000);
 }
 
 #[cfg(test)]
