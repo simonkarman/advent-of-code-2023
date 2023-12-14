@@ -5,10 +5,48 @@ enum Tile {
     Sliding,
 }
 
-fn solution(input: &str, number_of_cycles: usize) -> usize {
-    // Transform input to field of tiles
-    let width = input.lines().next().unwrap().chars().count();
-    let height = input.lines().count();
+fn calculate_load(field: &Vec<Tile>, width: usize, height: usize, move_north: bool) -> usize {
+    let to_index = |x: usize, y: usize| -> Option<usize> {
+        if x >= width || y >= height { return None }
+        return Some(width * y + x);
+    };
+
+    let mut sum = 0;
+    for x in 0..width {
+        let mut begin_y = 0;
+        let mut number_of_sliders = 0;
+        let mut curr_sum = 0;
+        for y in 0..(height + 1) {
+            let index = to_index(x, y);
+            let mut tile = Tile::Fixed;
+            if !index.is_none() {
+                tile = field[index.unwrap()];
+            }
+            match tile {
+                Tile::Sliding => {
+                    if move_north {
+                        number_of_sliders += 1;
+                        curr_sum += (height - begin_y) - (number_of_sliders - 1);
+                    } else {
+                        sum += height - y;
+                    }
+                },
+                Tile::Fixed => {
+                    if move_north {
+                        sum += curr_sum;
+                        number_of_sliders = 0;
+                        curr_sum = 0;
+                        begin_y = y + 1;
+                    }
+                }
+                _ => {},
+            }
+        }
+    }
+    return sum;
+}
+
+fn to_field(input: &str) -> Vec<Tile> {
     let mut field = vec![];
     input.lines().for_each(|line| line.chars().for_each(|char| field.push(match char {
         '.' => Tile::Empty,
@@ -16,6 +54,14 @@ fn solution(input: &str, number_of_cycles: usize) -> usize {
         'O' => Tile::Sliding,
         _ => panic!("unknown tile with type {}", char)
     })));
+    return field;
+}
+
+fn solution(input: &str, number_of_cycles: usize) -> usize {
+    // Transform input to field of tiles
+    let width = input.lines().next().unwrap().chars().count();
+    let height = input.lines().count();
+    let mut field = to_field(input);
 
     // Different coord systems over the array
     let _to_index = |x: i32, y: i32| -> Option<usize> {
@@ -35,39 +81,8 @@ fn solution(input: &str, number_of_cycles: usize) -> usize {
         return _to_index(y as i32, (height as i32) - (x as i32) - 1);
     };
 
-    // Calculate load
-    let calculate_load = |field: &Vec<Tile>| {
-        let mut sum = 0;
-        for x in 0..width {
-            let mut begin_y = 0;
-            let mut number_of_sliders = 0;
-            let mut curr_sum = 0;
-            for y in 0..(height + 1) {
-                let index = to_index_north(x, y);
-                let mut tile = Tile::Fixed;
-                if !index.is_none() {
-                    tile = field[index.unwrap()];
-                }
-                match tile {
-                    Tile::Sliding => {
-                        number_of_sliders += 1;
-                        curr_sum += (height - begin_y) - (number_of_sliders - 1);
-                    },
-                    Tile::Fixed => {
-                        sum += curr_sum;
-                        number_of_sliders = 0;
-                        curr_sum = 0;
-                        begin_y = y + 1;
-                    }
-                    _ => {},
-                }
-            }
-        }
-        return sum;
-    };
-
     if number_of_cycles == 0 {
-        return calculate_load(&field);
+        return calculate_load(&field, width, height, true);
     }
 
     // Go through all cycles
@@ -130,19 +145,20 @@ fn solution(input: &str, number_of_cycles: usize) -> usize {
             }
         }
         if cycle_at != 0 {
-            post_repetition_loads.push(calculate_load(&field));
+            post_repetition_loads.push(calculate_load(&field, width, height, false));
         }
 
-        // if number_of_cycles < 10 {
-        //     let load = calculate_load(&field);
-        //     println!("Load {} ", load);
-        //     field.chunks(width).for_each(|row| println!("{}", row.iter().map(|tile| match tile {
-        //         Tile::Empty => '.',
-        //         Tile::Fixed => '#',
-        //         Tile::Sliding => 'O',
-        //     }).collect::<String>()));
-        //     println!();
-        // }
+        if number_of_cycles < 20 {
+            println!("Cycle {} ", cycle_index);
+            field.chunks(width).for_each(|row| println!("{}", row.iter().map(|tile| match tile {
+                Tile::Empty => '.',
+                Tile::Fixed => '#',
+                Tile::Sliding => 'O',
+            }).collect::<String>()));
+            let load = calculate_load(&field, width, height, false);
+            println!("Load = {} ", load);
+            println!();
+        }
     }
 
     let repetition_len = post_cycle_fields.len() - cycle_at;
@@ -152,12 +168,12 @@ fn solution(input: &str, number_of_cycles: usize) -> usize {
     println!("with {} cycles remaining we expect to end with an index of {}", cycles_remaining, final_index);
 
     // 108579, 108568, 108561, 108563, 108568, 108583, 108607, 108625, 108648, 108650, 108645, 108644, 108633, 108632, 108622, 108607, 108589
-    let all_loads: Vec<usize> = post_cycle_fields.iter().map(|field| calculate_load(field)).collect();
-    let load = calculate_load(&post_cycle_fields[final_index]);
+    let all_loads: Vec<usize> = post_cycle_fields.iter().map(|field| calculate_load(field, width, height, false)).collect();
+    let load = calculate_load(&post_cycle_fields[final_index], width, height, false);
     println!("which is {} at index {} from all loads up to the repetition {:?}\nRepetition: {:?}", load, final_index, all_loads, all_loads[cycle_at..].iter().map(|s| *s).collect::<Vec<usize>>());
 
     if number_of_cycles <= 100 {
-        let fully_calculated_load = calculate_load(&field);
+        let fully_calculated_load = calculate_load(&field, width, height, false);
         println!("when still doing all results in {} -> {:?}", fully_calculated_load, post_repetition_loads);
         assert_eq!(load, fully_calculated_load, "loads should be the same if calculated from repetition or by going through all");
     }
@@ -176,7 +192,7 @@ pub fn part2(input: &str) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use super::{part1, part2};
+    use super::{part1, part2, solution, calculate_load, to_field};
 
     #[test]
     fn samples() {
@@ -190,20 +206,44 @@ O.#..O.#.#
 .......O..
 #....###..
 #OO..#....";
-        // assert_eq!(part1(example), 136);
-        assert_eq!(part2(example), 110 /*should be 64*/);
+        assert_eq!(part1(example), 136);
 
-        let example2 = "O....#....
-O.OO#....#
+        // .....#.... 0x10 0
+        // ....#...O# 1x9  9  69
+        // .....##... 0x8  0
+        // ..O#...... 1x7  7  60
+        // .....OOO#. 3x6  18 53
+        // .O#...O#.# 2x5  10 35
+        // ....O#...O 2x4  8  25
+        // .......OOO 3x3  9  17
+        // #...O###.O 2x2  4  8
+        // #..OO#..OO 4x1  4
+        let example2 = ".....#....
+....#...O#
 .....##...
-OO.#O#...O
-.O.....O#.
-O.#..O.#.#
-..O..#O..O
-.......O..
-#....###..
-#OO..#....";
-        assert_eq!(part2(example2), 64);
+..O#......
+.....OOO#.
+.O#...O#.#
+....O#...O
+.......OOO
+#...O###.O
+#..OO#..OO";
+        assert_eq!(calculate_load(&to_field(example2), 10, 10, false), 69);
+
+        // assert_eq!(solution(example, 18), 64);
+        assert_eq!(part2(example), 64);
+
+//         let example2 = "O....#....
+// O.OO#....#
+// .....##...
+// OO.#O#...O
+// .O.....O#.
+// O.#..O.#.#
+// ..O..#O..O
+// .......O..
+// #....###..
+// #OO..#....";
+//         assert_eq!(part2(example2), 64);
     }
 
     #[test]
