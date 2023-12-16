@@ -1,3 +1,5 @@
+use std::cmp;
+
 enum Tile {
     Empty,
     MirrorForward,
@@ -22,8 +24,7 @@ struct Beam {
     direction: Direction,
 }
 
-#[aoc(day16, part1)]
-pub fn part1(input: &str) -> usize {
+fn solution(input: &str, from_x: i32, from_y: i32, from_direction: Direction) -> usize {
     let width = input.lines().next().unwrap().chars().count();
     let height = input.lines().count();
     let mut tiles = vec![];
@@ -52,7 +53,7 @@ pub fn part1(input: &str) -> usize {
         _ => 0,
     };
 
-    let mut beams = vec![Beam { depth: 0, x: -1, y: 0, direction: Direction::East }];
+    let mut beams = vec![Beam { depth: 0, x: from_x, y: from_y, direction: from_direction }];
     while !beams.is_empty() {
         let last_beam = beams.len() - 1;
         let beam = beams.get(last_beam).unwrap();
@@ -143,13 +144,29 @@ pub fn part1(input: &str) -> usize {
             });
         }
     }
-    energized.chunks(width).for_each(|line| println!("{}", line.iter().map(|v| if *v { '#' } else { '.' } ).collect::<String>()));
+    // energized.chunks(width).for_each(|line| println!("{}", line.iter().map(|v| if *v { '#' } else { '.' } ).collect::<String>()));
     return energized.iter().filter(|v| **v).count();
 }
 
+#[aoc(day16, part1)]
+pub fn part1(input: &str) -> usize {
+    return solution(input, -1, 0, Direction::East);
+}
+
 #[aoc(day16, part2)]
-pub fn part2(_input: &str) -> usize {
-    return 0;
+pub fn part2(input: &str) -> usize {
+    let width = input.lines().next().unwrap().chars().count();
+    let height = input.lines().count();
+    let mut max = 0;
+    for x in 0..width {
+        max = cmp::max(max, solution(input, x as i32, -1, Direction::South));
+        max = cmp::max(max, solution(input, x as i32, height as i32, Direction::North));
+    }
+    for y in 0..height {
+        max = cmp::max(max, solution(input, -1, y as i32, Direction::East));
+        max = cmp::max(max, solution(input, width as i32, y as i32, Direction::West));
+    }
+    return max;
 }
 
 #[cfg(test)]
@@ -168,7 +185,7 @@ mod tests {
 .-.-/..|..
 .|....-|.\\
 ..//.|....";
-        assert_eq!(part1(example), 46); // too high: 7736
-        assert_eq!(part2(example), 0);
+        assert_eq!(part1(example), 46);
+        assert_eq!(part2(example), 51);
     }
 }
