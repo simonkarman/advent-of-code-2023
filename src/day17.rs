@@ -31,8 +31,8 @@ impl PartialOrd for Path {
     }
 }
 
-#[aoc(day17, part1)]
-pub fn part1(input: &str) -> usize {
+fn solution(input: &str, range_from: usize, range_to: usize) -> usize {
+
     let width = input.lines().next().unwrap().chars().count();
     let height = input.lines().count();
 
@@ -55,7 +55,7 @@ pub fn part1(input: &str) -> usize {
         for x in 0..width {
             let mut hor_targets = vec![];
             let mut ver_targets = vec![];
-            for delta in 1..4 {
+            for delta in range_from..(range_to + 1) {
                 // hor plane
                 if x >= delta {
                     hor_targets.push(Target {
@@ -128,9 +128,14 @@ pub fn part1(input: &str) -> usize {
     panic!("no path found");
 }
 
+#[aoc(day17, part1)]
+pub fn part1(input: &str) -> usize {
+    return solution(input, 1, 3);
+}
+
 #[aoc(day17, part2)]
-pub fn part2(_input: &str) -> usize {
-    return 0;
+pub fn part2(input: &str) -> usize {
+    return solution(input, 4, 10);
 }
 
 #[cfg(test)]
