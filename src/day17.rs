@@ -32,7 +32,6 @@ impl PartialOrd for Path {
 }
 
 fn solution(input: &str, range_from: usize, range_to: usize) -> usize {
-
     let width = input.lines().next().unwrap().chars().count();
     let height = input.lines().count();
 
@@ -158,6 +157,6 @@ mod tests {
 2546548887735
 4322674655533";
         assert_eq!(part1(example), 102);
-        assert_eq!(part2(example), 0);
+        assert_eq!(part2(example), 94);
     }
 }
