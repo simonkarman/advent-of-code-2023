@@ -1,4 +1,3 @@
-use std::cmp::max;
 use std::collections::HashMap;
 
 fn solution(input: &str, steps: usize) -> usize {
@@ -38,7 +37,7 @@ fn solution(input: &str, steps: usize) -> usize {
     let mut max_depth_seen = 0;
     while open.len() > 0 {
         // Always pick the next with the smallest depth
-        open.sort_by_key(|(index, depth, _, _)| steps - *depth);
+        open.sort_by_key(|(_, depth, _, _)| steps - *depth);
         let (index, depth, plane_x, plane_y) = open.pop().unwrap();
 
         // Mark this index at this depth as visited
@@ -82,26 +81,48 @@ fn solution(input: &str, steps: usize) -> usize {
     }
 
     println!("\nafter {} steps:", steps);
-    let mut sum = 0;
-    for y in 0..height {
-        for x in 0..width {
-            let index = y * width + x;
-            let v = &visited_per_depth_per_plane[to_depth_index(index, steps)];
-            sum += v.len();
-            if v.contains_key(&to_plane_index(0, 0)) {
-                let depth = v.get(&to_plane_index(0, 0)).unwrap();
-                print!("{:X}", depth % 16);
-            } else {
-                if tiles[index] {
-                    print!(".");
-                } else {
-                    print!("#");
+    let mut sums = vec![];
+    let mut total_sum = 0;
+    for plane_y in -4..5 {
+        for plane_x in -4..5 {
+            let print_plane = plane_x == 0 && (plane_y == 0 || plane_y == 1);
+            if print_plane {
+                println!("\nplane {},{}:", plane_x, plane_y);
+            }
+            let mut sum = 0;
+            total_sum = 0;
+            for y in 0..height {
+                for x in 0..width {
+                    let index = y * width + x;
+                    let v = &visited_per_depth_per_plane[to_depth_index(index, steps)];
+                    total_sum += v.len();
+                    let plane_index = &to_plane_index(plane_x, plane_y);
+                        if v.contains_key(plane_index) {
+                            sum += 1;
+                            // let depth = v.get(plane_index).unwrap();
+                            // print!("{:X}", depth % 16);
+                            if print_plane {
+                                print!("O");
+                            }
+                        } else if print_plane {
+                            if tiles[index] {
+                                print!(".");
+                            } else {
+                                print!("#");
+                            }
+                        }
+                }
+                if print_plane {
+                    println!();
                 }
             }
+            sums.push(sum);
         }
-        println!();
     }
-    return sum;
+    sums.chunks(9).for_each(|c| {
+        println!("{:?}", c);
+    });
+    return total_sum;
 }
 
 #[aoc(day21, part1)]
@@ -110,9 +131,24 @@ pub fn part1(input: &str) -> usize {
 }
 
 #[aoc(day21, part2)]
-pub fn part2(input: &str) -> usize {
+pub fn part2(_input: &str) -> f64 {
     // too low: 15427
-    return solution(input, 26501365);
+
+    // print a tiny subset of the solutions
+    // solution(input, 131*10/*26501365*/);
+
+    // what can be seen is that the number of spots alternate between 7697 and 7730 over the planes
+    // so all 131*131 maps completely inside the 26_501_365 circle can be calculated with these values
+    // only the ones on the edge need to be computed manually
+
+    // plane 0,0 is 7730 and can be found in day21_7730.txt
+    // plane 0,1 is 7697 and can be found in day21_7697.txt
+
+    let radius = 26501365f64 / 131f64;
+    let area = std::f64::consts::PI * radius * radius;
+    println!("{}", area);
+    return area * ((7730f64 + 7697f64) / 2f64);
+    // too high: 991734113981976
 }
 
 #[cfg(test)]
