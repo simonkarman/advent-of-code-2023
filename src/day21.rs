@@ -1,8 +1,15 @@
+use std::cmp::max;
+use std::collections::HashMap;
+
 fn solution(input: &str, steps: usize) -> usize {
-    let original_width = input.lines().next().unwrap().chars().count();
-    let original_height = input.lines().count();
-    let mut start_x = 0;
-    let mut start_y = 0;
+    let width = input.lines().next().unwrap().chars().count();
+    let height = input.lines().count();
+    let from_index = |index: usize| -> (usize, usize) {
+        let x = index % width;
+        let y = (index - x) / width;
+        (x, y)
+    };
+    let mut start_index = 0;
     let mut tiles = vec![];
     input.lines().enumerate().for_each(|(y, line)| {
         line.chars().enumerate().for_each(|(x, char)| {
@@ -10,8 +17,7 @@ fn solution(input: &str, steps: usize) -> usize {
                 '.' => true,
                 '#' => false,
                 'S' => {
-                    start_x = x;
-                    start_y = y;
+                    start_index = y * width + x;
                     true
                 }
                 _ => panic!("unknown tile {}", char)
@@ -19,63 +25,60 @@ fn solution(input: &str, steps: usize) -> usize {
         });
     });
 
-    let widths = 2 * (steps / original_width) + 1;
-    let heights = 2 * (steps / original_height) + 1;
-    println!("required {} and {} of {}x{} to fit {} steps", widths, heights, original_width, original_height, steps);
-    let start_x = start_x + ((widths / 2) * original_width);
-    let start_y = start_y + ((heights / 2) * original_height);
-    let width = widths * original_width;
-    let height = heights * original_height;
-    let start_index = start_y * width + start_x;
-    println!("{}x{} start at {},{}", width, height, start_x, start_y);
-
-    let from_index = |index: usize| -> (usize, usize) {
-        let x = index % width;
-        let y = (index - x) / width;
-        (x, y)
-    };
-
     let parity = 2;
-    let mut visited_per_depth: Vec<(bool, usize)> = vec![(false, usize::MAX); width * height * parity];
+    let mut visited_per_depth_per_plane: Vec<HashMap<i64, usize>> = vec![HashMap::new(); width * height * parity];
     let to_depth_index = |index: usize, depth: usize| {
         return (width * height * (depth % parity)) + index;
     };
-    let mut open: Vec<(usize, usize)> = vec![(to_depth_index(start_index, 0), 0)];
+    let to_plane_index = |plane_x: i32, plane_y: i32| -> i64 {
+        return (plane_x as i64) * 1_000_000i64 + (plane_y as i64);
+    };
+    let mut open: Vec<(usize, usize, i32, i32)> = vec![(to_depth_index(start_index, 0), 0, 0, 0)];
+    let mut visited_planes = HashMap::new();
+    let mut max_depth_seen = 0;
     while open.len() > 0 {
         // Always pick the next with the smallest depth
-        open.sort_by_key(|(index, depth)| steps - *depth);
-        let (index, depth) = open.pop().unwrap();
+        open.sort_by_key(|(index, depth, _, _)| steps - *depth);
+        let (index, depth, plane_x, plane_y) = open.pop().unwrap();
 
         // Mark this index at this depth as visited
+        let plane_index = to_plane_index(plane_x, plane_y);
+        if !visited_planes.contains_key(&plane_index) {
+            // println!("visiting plane {},{} index={}", plane_x, plane_y, plane_index);
+            visited_planes.insert(plane_index, true);
+        }
+        if depth > max_depth_seen {
+            max_depth_seen = depth;
+            println!("depth {} reached", max_depth_seen);
+        }
         let depth_index = to_depth_index(index, depth);
-        visited_per_depth[depth_index] = (true, depth);
+        let visited_per_plane = &mut visited_per_depth_per_plane[depth_index];
+        let visited = visited_per_plane.entry(plane_index).or_default();
+        *visited = depth;
 
         // When visiting a neighbor
-        let mut visit_neighbor = |x: usize, y: usize| {
+        let mut visit_neighbor = |x: usize, y: usize, plane_x: i32, plane_y: i32| {
+            let plane_index = to_plane_index(plane_x, plane_y);
             let target_index = y * width + x;
-            let tile_index = (y % original_height) * original_width + (x % original_width);
             let target_depth = depth + 1;
             let target_depth_index = to_depth_index(target_index, target_depth);
-            let previous_visit = visited_per_depth[target_depth_index];
+            let previous_visit_per_plane = &visited_per_depth_per_plane[target_depth_index];
+            let previous_visit = previous_visit_per_plane.contains_key(&plane_index);
             if target_depth <= steps // should be reachable within the given steps
-                && tiles[tile_index] // should be a garden and not a rock
-                && (!previous_visit.0 || previous_visit.1 > target_depth) // should not have already been visited at this depth UNLESS it was visited at a higher depth
-                && !open.contains(&(target_index, target_depth)) // should not already be on our list of future visits
+                && tiles[target_index] // should be a garden and not a rock
+                && !previous_visit // should not have already been visited at this depth
+                && !open.contains(&(target_index, target_depth, plane_x, plane_y)) // should not already be on our list of future visits
             {
-                open.push((target_index, target_depth));
+                open.push((target_index, target_depth, plane_x, plane_y));
             }
         };
 
         // Try and visit all neighbors
         let (x, y) = from_index(index);
-        if x > 0 { visit_neighbor(x - 1, y) };
-        if x < width - 1 { visit_neighbor(x + 1, y) };
-        if y > 0 { visit_neighbor(x, y - 1) };
-        if y < height - 1 { visit_neighbor(x, y + 1) };
-        // if x > 0 { visit_neighbor(x - 1, y) } else { visit_neighbor(width - 1, y); };
-        // if x < width - 1 { visit_neighbor(x + 1, y) } else { visit_neighbor(0, y); };
-        // if y > 0 { visit_neighbor(x, y - 1) } else { visit_neighbor(x, height - 1); };
-        // if y < height - 1 { visit_neighbor(x, y + 1) } else { visit_neighbor(x, 0); };
+        if x > 0 { visit_neighbor(x - 1, y, plane_x, plane_y) } else { visit_neighbor(width - 1, y, plane_x - 1, plane_y); };
+        if x < width - 1 { visit_neighbor(x + 1, y, plane_x, plane_y) } else { visit_neighbor(0, y, plane_x + 1, plane_y); };
+        if y > 0 { visit_neighbor(x, y - 1, plane_x, plane_y) } else { visit_neighbor(x, height - 1, plane_x, plane_y - 1); };
+        if y < height - 1 { visit_neighbor(x, y + 1, plane_x, plane_y) } else { visit_neighbor(x, 0, plane_x, plane_y + 1); };
     }
 
     println!("\nafter {} steps:", steps);
@@ -83,10 +86,11 @@ fn solution(input: &str, steps: usize) -> usize {
     for y in 0..height {
         for x in 0..width {
             let index = y * width + x;
-            let v = visited_per_depth[to_depth_index(index, steps)];
-            if v.0 {
-                print!("{:X}", v.1 % 16);
-                sum += 1;
+            let v = &visited_per_depth_per_plane[to_depth_index(index, steps)];
+            sum += v.len();
+            if v.contains_key(&to_plane_index(0, 0)) {
+                let depth = v.get(&to_plane_index(0, 0)).unwrap();
+                print!("{:X}", depth % 16);
             } else {
                 if tiles[index] {
                     print!(".");
@@ -113,7 +117,7 @@ pub fn part2(input: &str) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use super::{part1, part2, solution};
+    use super::{solution};
 
     #[test]
     fn samples() {
@@ -131,6 +135,6 @@ mod tests {
         assert_eq!(solution(example, 1), 2);
         assert_eq!(solution(example, 2), 4);
         assert_eq!(solution(example, 6), 16);
-        assert_eq!(part2(example), 0);
+        assert_eq!(solution(example, 500), 167004);
     }
 }
