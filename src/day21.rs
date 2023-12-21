@@ -23,44 +23,48 @@ fn solution(input: &str, steps: usize) -> usize {
     });
 
     let parity = 2;
-    let mut visited: Vec<bool> = vec![false; width * height * parity];
-    let to_visited_index = |index: usize, depth: usize| {
+    let mut visited_per_depth: Vec<(bool, usize)> = vec![(false, usize::MAX); width * height * parity];
+    let to_depth_index = |index: usize, depth: usize| {
         return (width * height * (depth % parity)) + index;
     };
-    let mut open: Vec<(usize, usize)> = vec![(start_index, 0)];
+    let mut open: Vec<(usize, usize)> = vec![(to_depth_index(start_index, 0), 0)];
     while let Some((index, depth)) = open.pop() {
         // Mark this index at this depth as visited
-        let visited_index = to_visited_index(index, depth);
-        visited[visited_index] = true;
-
-        // Stop if we're now at the max depth
-        if depth >= steps {
-            continue;
-        }
+        let depth_index = to_depth_index(index, depth);
+        visited_per_depth[depth_index] = (true, depth);
 
         // When visiting a neighbor
-        let mut try_visit = |x: usize, y: usize| {
+        let mut visit_neighbor = |x: usize, y: usize| {
             let target_index = y * width + x;
             let target_depth = depth + 1;
-            let target_visited_index = to_visited_index(target_index, target_depth);
-            if tiles[target_index] && !visited[target_visited_index] && !open.contains(&(target_index, target_depth)) {
+            let target_depth_index = to_depth_index(target_index, target_depth);
+            let previous_visit = visited_per_depth[target_depth_index];
+            if target_depth <= steps // should be reachable within the given steps
+                && tiles[target_index] // should be a garden and not a rock
+                && (!previous_visit.0 || previous_visit.1 > target_depth) // should not have already been visited at this depth UNLESS it was visited at a higher depth
+                && !open.contains(&(target_index, target_depth)) // should not already be on our list of future visits
+            {
                 open.push((target_index, target_depth));
             }
         };
 
-        // Try and visit all neighors
+        // Try and visit all neighbors
         let (x, y) = from_index(index);
-        if x > 0 { try_visit(x - 1, y) };
-        if x < width - 1 { try_visit(x + 1, y) };
-        if y > 0 { try_visit(x, y - 1) };
-        if y < height - 1 { try_visit(x, y + 1) };
+        if x > 0 { visit_neighbor(x - 1, y) };
+        if x < width - 1 { visit_neighbor(x + 1, y) };
+        if y > 0 { visit_neighbor(x, y - 1) };
+        if y < height - 1 { visit_neighbor(x, y + 1) };
     }
 
+    println!("\nafter {} steps:", steps);
+    let mut sum = 0;
     for y in 0..height {
         for x in 0..width {
             let index = y * width + x;
-            if visited[index] {
-                print!("O")
+            let v = visited_per_depth[to_depth_index(index, steps)];
+            if v.0 {
+                print!("{:X}", v.1);
+                sum += 1;
             } else {
                 if tiles[index] {
                     print!(".");
@@ -71,7 +75,7 @@ fn solution(input: &str, steps: usize) -> usize {
         }
         println!();
     }
-    return visited[0..(width*height)].iter().filter(|v| **v).count();
+    return sum;
 }
 
 #[aoc(day21, part1)]
@@ -101,6 +105,8 @@ mod tests {
 .##.#.####.
 .##..##.##.
 ...........";
+        assert_eq!(solution(example, 1), 2);
+        assert_eq!(solution(example, 2), 4);
         assert_eq!(solution(example, 6), 16);
         assert_eq!(part2(example), 0);
     }
