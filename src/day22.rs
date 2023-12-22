@@ -122,12 +122,7 @@ pub fn part2(input: &str) -> usize {
         }
         fallen.len() - 1
     };
-    let would_fall: Vec<usize> = (0..block_configuration.len()).map(would_fall).collect();
-    // println!("-- debug information --");
-    // block_configuration.iter().enumerate().for_each(|(block_index, configuration)| {
-    //     println!("block {} rests on {:?} and supports {:?} (fall={})", block_index, configuration.0, configuration.1, would_fall.get(block_index).unwrap());
-    // });
-    return would_fall.iter().sum();
+    return (0..block_configuration.len()).map(would_fall).sum();
 }
 
 #[cfg(test)]
@@ -159,25 +154,3 @@ mod tests {
         assert_eq!(part2(example1), 7);
     }
 }
-
-
-
-// let mut block_index = block_configuration.len();
-// let mut dependent_blocks = vec![1; block_configuration.len()];
-// while block_index > 0 {
-//     block_index -= 1;
-//     // if this block is not removable, it would make fall all blocks above it that are not supported by something else
-//     if !removable_blocks[block_index] {
-//         let (_, supporting) = block_configuration.get(block_index).unwrap();
-//         dependent_blocks[block_index] = supporting.iter().filter(|supporting_block_index| {
-//             let (resting_on, _) = block_configuration.get(**supporting_block_index).unwrap();
-//             resting_on.iter().len() == 1
-//         }).map(|supporting_block_index| dependent_blocks[*supporting_block_index]).sum()
-//     };
-// }
-//
-// println!("-- debug information --");
-// block_configuration.iter().enumerate().for_each(|(block_index, configuration)| {
-//     println!("block {} rests on {:?} and supports {:?} (removable={}, fall={})", block_index, configuration.0, configuration.1, removable_blocks.get(block_index).unwrap(), dependent_blocks[block_index]);
-// });
-// return dependent_blocks.iter().sum::<usize>() - dependent_blocks.iter().count();
