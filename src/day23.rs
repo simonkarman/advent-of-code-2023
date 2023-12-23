@@ -14,8 +14,7 @@ struct Section {
     next: Vec<usize>,
 }
 
-#[aoc(day23, part1)]
-pub fn part1(input: &str) -> usize {
+fn find_sections(input: &str) -> (usize, HashMap<usize, Section>) {
     let width = input.lines().next().unwrap().chars().count();
     let height = input.lines().count();
     let to_index = |x: usize, y: usize| y * width + x;
@@ -159,7 +158,14 @@ pub fn part1(input: &str) -> usize {
     println!("}}");
     println!("--end graphviz sections--");
 
-    // Find the longest path
+    (begin, sections)
+}
+
+#[aoc(day23, part1)]
+pub fn part1(input: &str) -> usize {
+    let (begin, sections) = find_sections(input);
+
+    // Find the longest route from begin to goal
     let mut open: Vec<(/*section*/usize, /*path_length*/usize)> = vec![];
     let mut length_to_section: HashMap<usize, usize> = HashMap::new();
     open.push((begin, 0));
@@ -192,8 +198,52 @@ pub fn part1(input: &str) -> usize {
 }
 
 #[aoc(day23, part2)]
-pub fn part2(_input: &str) -> usize {
-    return 0;
+pub fn part2(input: &str) -> usize {
+    let (begin, sections) = find_sections(input);
+
+    // Allow going backwards
+    let mut backwards_per_section: HashMap<usize, Vec<usize>> = HashMap::new();
+    sections.iter().for_each(|(section_index, section)| {
+        section.next.iter().for_each(|next_section_index| {
+            backwards_per_section.entry(*next_section_index).or_default().push(*section_index);
+        });
+    });
+
+    // Find the longest route from begin to goal
+    let mut open: Vec<(/*section*/usize, /*visited_sections*/Vec<usize>)> = vec![];
+    open.push((begin, vec!(begin)));
+    let mut longest_route = 0;
+    while let Some((section_start, visited_sections)) = open.pop() {
+        let section = sections.get(&section_start).unwrap();
+
+        // Find all next and backwards options and filter out ones that this path has already visited
+        let mut next_options: Vec<usize> = section.next.clone();
+        if let Some(backwards) = backwards_per_section.get(&section_start) {
+            backwards.iter().for_each(|r| next_options.push(*r));
+        }
+        let next_options: Vec<usize> = next_options.iter().filter(|o| !visited_sections.contains(*o)).map(|v| *v).collect();
+
+        // There are no options left
+        if next_options.is_empty() {
+            // and this is the goal
+            if section.next.is_empty() {
+                // validate if this is the longest route
+                longest_route = cmp::max(longest_route, visited_sections.iter().map(|vi|
+                    sections.get(vi).unwrap().length).sum::<usize>() // the length of all visited sections summed
+                    + visited_sections.len() - 1 // and add all slides that we traversed
+                );
+            }
+            // otherwise, we found a dead end that isn't the goal, which means this path can be discarded
+        } else {
+            // if there are options left, traverse each
+            next_options.iter().for_each(|n| {
+                let mut n_visited_sections = visited_sections.clone();
+                n_visited_sections.push(*n);
+                open.push((*n, n_visited_sections));
+            });
+        }
+    }
+    return longest_route - 1;
 }
 
 #[cfg(test)]
@@ -226,6 +276,6 @@ mod tests {
 #.....###...###...#...#
 #####################.#";
         assert_eq!(part1(example), 94);
-        assert_eq!(part2(example), 0);
+        assert_eq!(part2(example), 154);
     }
 }
