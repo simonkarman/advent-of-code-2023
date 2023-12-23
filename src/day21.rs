@@ -131,24 +131,29 @@ pub fn part1(input: &str) -> usize {
 }
 
 #[aoc(day21, part2)]
-pub fn part2(_input: &str) -> f64 {
-    // too low: 15427
+pub fn part2(input: &str) -> i64 {
+    // Since solution is repeatable in the provided puzzle input, we can find three points and
+    //  extrapolate the answer from those using a quadratic formula
+    let width = 131;
+    let steps = 26501365;
 
-    // print a tiny subset of the solutions
-    // solution(input, 131*10/*26501365*/);
+    // First let's find our three base points
+    let remainder = steps % width;
+    let one = solution(input, remainder) as i64;
+    let two = solution(input, remainder + width) as i64;
+    let three = solution(input, remainder + 2 * width) as i64;
 
-    // what can be seen is that the number of spots alternate between 7697 and 7730 over the planes
-    // so all 131*131 maps completely inside the 26_501_365 circle can be calculated with these values
-    // only the ones on the edge need to be computed manually
+    // Then, find the quadratic formula
+    let a = (one - 2 * two + three) / 2;
+    let b = (-3 * one + 4 * two - three) / 2;
+    let c = one;
+    println!("Formula(x) = {a}x^2 + {b}x + {c}");
 
-    // plane 0,0 is 7730 and can be found in day21_7730.txt
-    // plane 0,1 is 7697 and can be found in day21_7697.txt
-
-    let radius = 26501365f64 / 131f64;
-    let area = std::f64::consts::PI * radius * radius;
-    println!("{}", area);
-    return area * ((7730f64 + 7697f64) / 2f64);
-    // too high: 991734113981976
+    // Finally, print the result for x
+    let x = (steps / width) as i64;
+    let result = a * x * x + b * x + c;
+    println!("Formula({x}) = {result}");
+    return result;
 }
 
 #[cfg(test)]
