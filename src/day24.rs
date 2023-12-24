@@ -66,6 +66,17 @@ impl Line {
         // return intersection point
         return Some((self.x + t * self.vx, self.y + t * self.vy, self.z + t * self.vz));
     }
+
+    fn with_velocity(&self, dvx: f64, dvy: f64, dvz: f64) -> Line {
+        Line {
+            x: self.x,
+            y: self.y,
+            z: self.z,
+            vx: self.vx + dvx,
+            vy: self.vy + dvy,
+            vz: self.vz + dvz,
+        }
+    }
 }
 
 #[aoc(day24, part1)]
@@ -88,17 +99,29 @@ pub fn part1(input: &str) -> usize {
 }
 
 #[aoc(day24, part2)]
-pub fn part2(input: &str) -> usize {
+pub fn part2(input: &str) -> f64 {
     let lines: Vec<Line> = input.lines().map(Line::new).collect();
-
-    // hardcode answer for part 1
-    if lines.len() == 5 {
-        return 47;
+    for z in -499..500 {
+        let z = z as f64;
+        for y in -499..500 {
+            let y = y as f64;
+            for x in -499..500 {
+                let x = x as f64;
+                let line_a = lines[0].with_velocity(x, y, z);
+                let line_b = lines[1].with_velocity(x, y, z);
+                let line_c = lines[2].with_velocity(x, y, z);
+                if let Some(intersection_ab) = line_a.find_xyz_intersection(&line_b) {
+                    if let Some(intersection_ac) = line_a.find_xyz_intersection(&line_c) {
+                        if intersection_ab == intersection_ac {
+                            let (ix, iy, iz) = intersection_ab;
+                            return ix + iy + iz;
+                        }
+                    }
+                }
+            }
+        }
     }
-
-    // no idea ??
-
-    return 0;
+    panic!("not found!");
 }
 
 #[cfg(test)]
@@ -113,6 +136,6 @@ mod tests {
 12, 31, 28 @ -1, -2, -1
 20, 19, 15 @  1, -5, -3";
         assert_eq!(part1(example), 2);
-        assert_eq!(part2(example), 47);
+        assert_eq!(part2(example), 47f64);
     }
 }
